@@ -335,7 +335,7 @@ class Particle {
       return _color;
     }
 
-    final result = (1 - min(1, _location.y / (_screenSize.height * 0.67))) * 255;
+    final result = (1 - min(1, _location.y / (_screenSize.height * 0.9))) * 255;
     return _color.withAlpha(result.toInt());
   }
 

@@ -1,7 +1,7 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
 import 'package:confetti/src/particle.dart';
+import 'package:flutter/material.dart';
 
 import 'enums/blast_directionality.dart';
 import 'enums/confetti_controller_state.dart';
@@ -109,8 +109,7 @@ class ConfettiWidget extends StatefulWidget {
   _ConfettiWidgetState createState() => _ConfettiWidgetState();
 }
 
-class _ConfettiWidgetState extends State<ConfettiWidget>
-    with SingleTickerProviderStateMixin {
+class _ConfettiWidgetState extends State<ConfettiWidget> with SingleTickerProviderStateMixin {
   final GlobalKey _particleSystemKey = GlobalKey();
 
   AnimationController _animController;
@@ -121,7 +120,7 @@ class _ConfettiWidgetState extends State<ConfettiWidget>
   Offset _emitterPosition;
 
   /// Keeps track of the screen size on layout changes
-  /// Controls the sizing restrictions for when confetti should be vissible
+  /// Controls the sizing restrictions for when confetti should be visible
   Size _screenSize = const Size(0, 0);
 
   @override
@@ -138,7 +137,7 @@ class _ConfettiWidgetState extends State<ConfettiWidget>
         blastDirectionality: widget.blastDirectionality,
         colors: widget.colors,
         minimumSize: widget.minimumSize,
-        maximumsize: widget.maximumSize,
+        maximumSize: widget.maximumSize,
         particleDrag: widget.particleDrag);
 
     _particleSystem.addListener(_particleSystemListener);
@@ -147,9 +146,17 @@ class _ConfettiWidgetState extends State<ConfettiWidget>
     super.initState();
   }
 
+  void _handleChange() {
+    if (widget.confettiController.state == ConfettiControllerState.playing) {
+      _startAnimation();
+      _startEmission();
+    } else if (widget.confettiController.state == ConfettiControllerState.stopped) {
+      _stopEmission();
+    }
+  }
+
   void _initAnimation() {
-    _animController = AnimationController(
-        vsync: this, duration: widget.confettiController.duration);
+    _animController = AnimationController(vsync: this, duration: widget.confettiController.duration);
     _animation = Tween<double>(begin: 0, end: 1).animate(_animController);
     _animation.addListener(_animationListener);
     _animation.addStatusListener(_animationStatusListener);
@@ -157,16 +164,6 @@ class _ConfettiWidgetState extends State<ConfettiWidget>
     if (widget.confettiController.state == ConfettiControllerState.playing) {
       _startAnimation();
       _startEmission();
-    }
-  }
-
-  void _handleChange() {
-    if (widget.confettiController.state == ConfettiControllerState.playing) {
-      _startAnimation();
-      _startEmission();
-    } else if (widget.confettiController.state ==
-        ConfettiControllerState.stopped) {
-      _stopEmission();
     }
   }
 
@@ -232,8 +229,7 @@ class _ConfettiWidgetState extends State<ConfettiWidget>
   }
 
   Offset _getContainerPosition() {
-    final RenderBox containerRenderBox =
-        _particleSystemKey.currentContext.findRenderObject();
+    final RenderBox containerRenderBox = _particleSystemKey.currentContext.findRenderObject();
     return containerRenderBox.localToGlobal(Offset.zero);
   }
 
@@ -285,10 +281,7 @@ class _ConfettiWidgetState extends State<ConfettiWidget>
 }
 
 class ParticlePainter extends CustomPainter {
-  ParticlePainter(Listenable repaint,
-      {@required this.particles,
-      paintEmitterTarget = true,
-      emitterTargetColor = Colors.black})
+  ParticlePainter(Listenable repaint, {@required this.particles, paintEmitterTarget = true, emitterTargetColor = Colors.black})
       : _paintEmitterTarget = paintEmitterTarget,
         _emitterPaint = Paint()
           ..color = emitterTargetColor
@@ -333,8 +326,8 @@ class ParticlePainter extends CustomPainter {
       final rotationMatrix4 = Matrix4.identity();
       rotationMatrix4
         ..translate(particle.location.dx, particle.location.dy)
-        ..rotateX(particle.angleX)
-        ..rotateY(particle.angleY)
+        // ..rotateX(particle.angleX)
+        // ..rotateY(particle.angleY)
         ..rotateZ(particle.angleZ);
 
       final finalPath = particle.path.transform(rotationMatrix4.storage);
@@ -349,10 +342,7 @@ class ParticlePainter extends CustomPainter {
 }
 
 class ConfettiController extends ChangeNotifier {
-  ConfettiController({this.duration = const Duration(seconds: 30)})
-      : assert(duration != null &&
-            !duration.isNegative &&
-            duration.inMicroseconds > 0);
+  ConfettiController({this.duration = const Duration(seconds: 30)}) : assert(duration != null && !duration.isNegative && duration.inMicroseconds > 0);
 
   Duration duration;
 

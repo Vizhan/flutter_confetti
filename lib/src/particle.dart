@@ -1,11 +1,10 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:confetti/src/helper.dart';
 import 'package:flutter/material.dart';
 import 'package:random_color/random_color.dart';
 import 'package:vector_math/vector_math.dart' as vmath;
-
-import 'package:confetti/src/helper.dart';
 
 import 'enums/blast_directionality.dart';
 
@@ -25,7 +24,7 @@ class ParticleSystem extends ChangeNotifier {
       @required BlastDirectionality blastDirectionality,
       @required List<Color> colors,
       @required Size minimumSize,
-      @required Size maximumsize,
+      @required Size maximumSize,
       @required double particleDrag,
       @required double gravity})
       : assert(
@@ -35,7 +34,7 @@ class ParticleSystem extends ChangeNotifier {
               minBlastForce != null &&
               blastDirection != null &&
               minimumSize != null &&
-              maximumsize != null &&
+              maximumSize != null &&
               particleDrag != null &&
               blastDirectionality != null,
         ),
@@ -46,13 +45,13 @@ class ParticleSystem extends ChangeNotifier {
             numberOfParticles > 0 &&
             minimumSize.width > 0 &&
             minimumSize.height > 0 &&
-            maximumsize.width > 0 &&
-            maximumsize.height > 0 &&
-            minimumSize.width <= maximumsize.width &&
-            minimumSize.height <= maximumsize.height &&
+            maximumSize.width > 0 &&
+            maximumSize.height > 0 &&
+            minimumSize.width <= maximumSize.width &&
+            minimumSize.height <= maximumSize.height &&
             particleDrag >= 0.0 &&
             particleDrag <= 1 &&
-            minimumSize.height <= maximumsize.height),
+            minimumSize.height <= maximumSize.height),
         assert(gravity >= 0 && gravity <= 1),
         _blastDirection = blastDirection,
         _blastDirectionality = blastDirectionality,
@@ -63,7 +62,7 @@ class ParticleSystem extends ChangeNotifier {
         _numberOfParticles = numberOfParticles,
         _colors = colors,
         _minimumSize = minimumSize,
-        _maximumSize = maximumsize,
+        _maximumSize = maximumSize,
         _particleDrag = particleDrag,
         _rand = Random();
 
@@ -116,10 +115,11 @@ class ParticleSystem extends ChangeNotifier {
   }
 
   List<Particle> get particles => _particles;
+
   ParticleSystemStatus get particleSystemStatus => _particleSystemStatus;
 
   void update() {
-    _clean();
+    _cleanOutsideOfBorderParticles();
     if (_particleSystemStatus != ParticleSystemStatus.finished) {
       _updateParticles();
     }
@@ -139,8 +139,7 @@ class ParticleSystem extends ChangeNotifier {
       }
     }
 
-    if (_particleSystemStatus == ParticleSystemStatus.stopped &&
-        _particles.isEmpty) {
+    if (_particleSystemStatus == ParticleSystemStatus.stopped && _particles.isEmpty) {
       finishParticleEmission();
       notifyListeners();
     }
@@ -161,31 +160,23 @@ class ParticleSystem extends ChangeNotifier {
     }
   }
 
-  void _clean() {
-    if (_particleSystemPosition != null &&
-        _screenSize != null &&
-        particles != null) {
-      _particles
-          .removeWhere((particle) => _isOutsideOfBorder(particle.location));
+  void _cleanOutsideOfBorderParticles() {
+    if (_particleSystemPosition != null && _screenSize != null && particles != null) {
+      _particles.removeWhere((particle) => _isOutsideOfBorder(particle.location));
     }
   }
 
   bool _isOutsideOfBorder(Offset particleLocation) {
     final globalParticlePosition = particleLocation + _particleSystemPosition;
-    return (globalParticlePosition.dy >= _bottomBorder) ||
-        (globalParticlePosition.dx >= _rightBorder) ||
-        (globalParticlePosition.dx <= _leftBorder);
+    return (globalParticlePosition.dy >= _bottomBorder) || (globalParticlePosition.dx >= _rightBorder) || (globalParticlePosition.dx <= _leftBorder);
   }
 
   List<Particle> _generateParticles({int number = 1}) {
     return List<Particle>.generate(
-        number,
-        (i) => Particle(_generateParticleForce(), _randomColor(), _randomSize(),
-            _gravity, _particleDrag));
+        number, (i) => Particle(_generateParticleForce(), _randomColor(), _randomSize(), _screenSize, _gravity, _particleDrag));
   }
 
-  double get _randomBlastDirection =>
-      vmath.radians(Random().nextInt(359).toDouble());
+  double get _randomBlastDirection => vmath.radians(Random().nextInt(359).toDouble());
 
   vmath.Vector2 _generateParticleForce() {
     var blastDirection = _blastDirection;
@@ -218,16 +209,15 @@ class ParticleSystem extends ChangeNotifier {
 }
 
 class Particle {
-  Particle(vmath.Vector2 startUpForce, Color color, Size size, double gravity,
-      double particleDrag)
+  Particle(vmath.Vector2 startUpForce, Color color, Size size, Size screenSize, double gravity, double particleDrag)
       : _startUpForce = startUpForce,
         _color = color,
-        _mass = randomize(1, 11),
+        _mass = randomize(1, 5),
         _particleDrag = particleDrag,
         _location = vmath.Vector2.zero(),
         _acceleration = vmath.Vector2.zero(),
         _velocity = vmath.Vector2(randomize(-3, 3), randomize(-3, 3)),
-        // _size = size,
+        _screenSize = screenSize,
         _pathShape = createPath(size),
         _aVelocityX = randomize(-0.1, 0.1),
         _aVelocityY = randomize(-0.1, 0.1),
@@ -251,19 +241,35 @@ class Particle {
   final _aAcceleration = 0.0001;
 
   final Color _color;
+  final Size _screenSize;
   final double _mass;
   final Path _pathShape;
 
   double _timeAlive = 0;
 
   static Path createPath(Size size) {
-    final pathShape = Path();
-    pathShape.moveTo(0, 0);
-    pathShape.lineTo(-size.width, 0);
-    pathShape.lineTo(-size.width, size.height);
-    pathShape.lineTo(0, size.height);
-    pathShape.close();
-    return pathShape;
+    final circle = Path();
+    circle.addOval(Rect.fromCircle(
+      center: const Offset(0, 0),
+      radius: size.width / 2,
+    ));
+
+    final triangle = Path();
+    triangle.moveTo(0, size.width);
+    triangle.lineTo(0, size.width);
+    triangle.lineTo(size.width / 2, 0);
+    triangle.lineTo(size.width, size.width);
+    triangle.close();
+
+    final square = Path();
+    square.moveTo(0, 0);
+    square.lineTo(-size.width, 0);
+    square.lineTo(-size.width, size.width);
+    square.lineTo(0, size.width);
+    square.close();
+
+    final List<Path> list = [circle, triangle, square];
+    return list[Random().nextInt(list.length)];
   }
 
   void applyForce(vmath.Vector2 force) {
@@ -323,10 +329,21 @@ class Particle {
     return Offset(_location.x, _location.y);
   }
 
-  Color get color => _color;
+  Color get color {
+    final progress = _location.y / _screenSize.height;
+    if (progress.isNegative) {
+      return _color;
+    }
+
+    final result = (1 - min(1, _location.y / (_screenSize.height * 0.67))) * 255;
+    return _color.withAlpha(result.toInt());
+  }
+
   Path get path => _pathShape;
 
   double get angleX => _aX;
+
   double get angleY => _aY;
+
   double get angleZ => _aZ;
 }
